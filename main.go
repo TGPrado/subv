@@ -6,44 +6,70 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"regexp"
 )
 
-func readFile(file *os.File, lines map[string]int) int {
+func readFileLines(file *os.File, lines []string) (int, []string) {
+	linesDict := make(map[string]int)
 	input := bufio.NewScanner(file)
 	var cont int
+
 	for input.Scan() {
 		text := input.Text()
 		if text == "" {
 			continue
 		}
 
-		lines[text]++
-		if lines[text] == 1 {
+		linesDict[text]++
+
+		if linesDict[text] == 1 {
+			lines = append(lines, text)
 			cont++
 		}
 	}
-	return cont
+	return cont, lines
 }
 
-func getDomains(fileName string, lines map[string]int) int {
+func readFile(fileName string, lines []string) (int, []string) {
 	if fileName == "" {
-		return readFile(os.Stdin, lines)
+		return readFileLines(os.Stdin, lines)
 	} else {
 		file, err := os.Open(fileName)
+
 		if err != nil {
 			log.Fatal("Error reading file; ", err)
 		}
-		return readFile(file, lines)
+
+		return readFileLines(file, lines)
 	}
 
+}
+
+func checkIfMatch(regexs map[string]int, domain string) {
+	for key, _ := range regexs {
+		match, _ := regexp.MatchString(key, domain)
+		if match {
+			return
+
+		}
+	}
 }
 
 func main() {
 	var dFlag = flag.String("d", "", "File with a list of domains.")
-	//var fFlag = flag.String("f", "", "File with a list of regex.")
+	var rFlag = flag.String("r", "", "File with a list of regex.")
 	//var tFlag = flag.Int("t", 10, "Number of threads.")
 	flag.Parse()
-	lines := make(map[string]int)
-	lineNumber := getDomains(*dFlag, lines)
-	fmt.Println(lineNumber)
+
+	//output := make(chan string)
+	var domains, regexs []string
+
+	numberOfDomains, domains := readFile(*dFlag, domains)
+	if *rFlag == "" {
+		log.Fatal("Please provide a valid regex file")
+	}
+
+	_, regexs = readFile(*rFlag, regexs)
+
+	fmt.Println(domains, numberOfDomains)
 }
