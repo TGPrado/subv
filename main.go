@@ -45,7 +45,7 @@ func readFile(fileName string, lines []string) (int, []string) {
 
 }
 
-func checkIfMatch(regexs []string, domain string, threads chan struct{}, output chan string) {
+func checkIfMatch(regexs []string, domain string, output chan string) {
 	for key := range regexs {
 		match, _ := regexp.MatchString(regexs[key], domain)
 		if match {
@@ -79,7 +79,7 @@ func main() {
 
 			threads <- struct{}{}
 			defer func() { <-threads }()
-			checkIfMatch(regexs, domain, threads, output)
+			checkIfMatch(regexs, domain, output)
 
 		}(domain)
 	}
