@@ -45,12 +45,12 @@ func readFile(fileName string, lines []string) (int, []string) {
 
 }
 
-func checkIfMatch(regexs map[string]int, domain string) {
-	for key, _ := range regexs {
-		match, _ := regexp.MatchString(key, domain)
+func checkIfMatch(regexs []string, domain string, threads chan struct{}, output chan string) {
+	for key := range regexs {
+		match, _ := regexp.MatchString(regexs[key], domain)
 		if match {
-			return
-
+			output <- domain
+			break
 		}
 	}
 }
@@ -58,18 +58,34 @@ func checkIfMatch(regexs map[string]int, domain string) {
 func main() {
 	var dFlag = flag.String("d", "", "File with a list of domains.")
 	var rFlag = flag.String("r", "", "File with a list of regex.")
-	//var tFlag = flag.Int("t", 10, "Number of threads.")
+	var tFlag = flag.Int("t", 10, "Number of threads.")
 	flag.Parse()
 
-	//output := make(chan string)
+	threads := make(chan struct{}, *tFlag)
 	var domains, regexs []string
 
-	numberOfDomains, domains := readFile(*dFlag, domains)
+	_, domains = readFile(*dFlag, domains)
+
+	output := make(chan string, len(domains))
+
 	if *rFlag == "" {
 		log.Fatal("Please provide a valid regex file")
 	}
 
 	_, regexs = readFile(*rFlag, regexs)
 
-	fmt.Println(domains, numberOfDomains)
+	for _, domain := range domains {
+		go func(domain string) {
+
+			threads <- struct{}{}
+			defer func() { <-threads }()
+			checkIfMatch(regexs, domain, threads, output)
+
+		}(domain)
+	}
+
+	for range domains {
+		fmt.Println(<-output)
+
+	}
 }
