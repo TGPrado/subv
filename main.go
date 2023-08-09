@@ -9,10 +9,8 @@ import (
 	"regexp"
 )
 
-func readFileLines(file *os.File, lines []string) (int, []string) {
-	linesDict := make(map[string]int)
+func readFileLines(file *os.File, linesDict map[string]int) {
 	input := bufio.NewScanner(file)
-	var cont int
 
 	for input.Scan() {
 		text := input.Text()
@@ -22,17 +20,12 @@ func readFileLines(file *os.File, lines []string) (int, []string) {
 
 		linesDict[text]++
 
-		if linesDict[text] == 1 {
-			lines = append(lines, text)
-			cont++
-		}
 	}
-	return cont, lines
 }
 
-func readFile(fileName string, lines []string) (int, []string) {
+func readFile(fileName string, linesDict map[string]int) {
 	if fileName == "" {
-		return readFileLines(os.Stdin, lines)
+		readFileLines(os.Stdin, linesDict)
 	} else {
 		file, err := os.Open(fileName)
 
@@ -40,14 +33,14 @@ func readFile(fileName string, lines []string) (int, []string) {
 			log.Fatal("Error reading file; ", err)
 		}
 
-		return readFileLines(file, lines)
+		readFileLines(file, linesDict)
 	}
 
 }
 
-func checkIfMatch(regexs []string, domain string, output chan string) {
-	for key := range regexs {
-		match, _ := regexp.MatchString(regexs[key], domain)
+func checkIfMatch(regexs map[string]int, domain string, output chan string) {
+	for regex, _ := range regexs {
+		match, _ := regexp.MatchString(regex, domain)
 		if match {
 			output <- domain
 			break
@@ -62,9 +55,10 @@ func main() {
 	flag.Parse()
 
 	threads := make(chan struct{}, *tFlag)
-	var domains, regexs []string
+	domains := make(map[string]int)
+	regexs := make(map[string]int)
 
-	_, domains = readFile(*dFlag, domains)
+	readFile(*dFlag, domains)
 
 	output := make(chan string, len(domains))
 
@@ -72,9 +66,9 @@ func main() {
 		log.Fatal("Please provide a valid regex file")
 	}
 
-	_, regexs = readFile(*rFlag, regexs)
+	readFile(*rFlag, regexs)
 
-	for _, domain := range domains {
+	for domain, _ := range domains {
 		go func(domain string) {
 
 			threads <- struct{}{}
